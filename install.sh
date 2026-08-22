@@ -1,55 +1,63 @@
 #!/usr/bin/env bash
 #
-# install.sh — materialize canonical skills into per-tool formats and wire them
-# into the tools installed on this machine.
+# install.sh — install skills by SYMLINKING each canonical skills/<name>/SKILL.md
+# into the locations Claude Code, Cursor, and Copilot read from. Nothing is
+# copied or generated: there is one file per skill, and editing it updates every
+# tool at once. The single SKILL.md carries frontmatter every tool tolerates
+# (Claude reads description/argument-hint/allowed-tools; Copilot reads mode +
+# description; Cursor ignores frontmatter).
 #
 # Usage:
-#   ./install.sh                 # build + install every skill under skills/
-#   ./install.sh mw-create-skill # build + install just one skill
+#   ./install.sh                      # link every skill's Claude command globally
+#   ./install.sh <name>               # link just that skill (Claude, global)
+#   ./install.sh --project <dir>      # also link every skill into a project's
+#                                     #   Cursor + Copilot dirs
+#   ./install.sh --project <dir> <name>
 #
-# For each skill it generates, under skills/<name>/dist/:
-#   <name>.md          -> Claude Code command   (also symlinked to ~/.claude/commands/)
-#   cursor/<name>.md   -> Cursor command
-#   copilot/<name>.prompt.md -> GitHub Copilot prompt file
-#
-# Claude commands are installed globally (~/.claude/commands) so /<name> works in
-# any Claude Code session. Cursor and Copilot resolve their prompt files per
-# project, so copy or symlink the generated dist files into a project's
-# .cursor/commands and .github/prompts when you want them there (see README).
+# Link names per tool (all point at the same SKILL.md):
+#   ~/.claude/commands/<name>.md                     Claude Code   (global)
+#   <project>/.cursor/commands/<name>.md             Cursor        (per project)
+#   <project>/.github/prompts/<name>.prompt.md       Copilot       (per project)
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_CMD_DIR="${HOME}/.claude/commands"
 
-build_one() {
+PROJECT=""
+if [[ "${1:-}" == "--project" ]]; then
+  [[ -n "${2:-}" ]] || { echo "error: --project needs a directory" >&2; exit 1; }
+  mkdir -p "$2"
+  PROJECT="$(cd "$2" && pwd)"
+  shift 2
+fi
+
+link_one() {
   local name="$1"
   local src="${REPO_ROOT}/skills/${name}/SKILL.md"
   if [[ ! -f "$src" ]]; then
     echo "error: no SKILL.md for '${name}' at ${src}" >&2
     return 1
   fi
-  local dist="${REPO_ROOT}/skills/${name}/dist"
-  mkdir -p "${dist}/cursor" "${dist}/copilot"
-
-  python3 "${REPO_ROOT}/scripts/render.py" "$src" "$name" "$dist"
 
   mkdir -p "$CLAUDE_CMD_DIR"
-  ln -sf "${dist}/${name}.md" "${CLAUDE_CMD_DIR}/${name}.md"
-  echo "installed: ${name}"
-  echo "  claude : ${CLAUDE_CMD_DIR}/${name}.md -> ${dist}/${name}.md"
-  echo "  cursor : ${dist}/cursor/${name}.md"
-  echo "  copilot: ${dist}/copilot/${name}.prompt.md"
-}
+  ln -sf "$src" "${CLAUDE_CMD_DIR}/${name}.md"
+  echo "linked: ${name}"
+  echo "  claude : ${CLAUDE_CMD_DIR}/${name}.md"
 
-main() {
-  if [[ $# -ge 1 ]]; then
-    build_one "$1"
-  else
-    for d in "${REPO_ROOT}"/skills/*/; do
-      [[ -f "${d}SKILL.md" ]] && build_one "$(basename "$d")"
-    done
+  if [[ -n "$PROJECT" ]]; then
+    mkdir -p "${PROJECT}/.cursor/commands" "${PROJECT}/.github/prompts"
+    ln -sf "$src" "${PROJECT}/.cursor/commands/${name}.md"
+    ln -sf "$src" "${PROJECT}/.github/prompts/${name}.prompt.md"
+    echo "  cursor : ${PROJECT}/.cursor/commands/${name}.md"
+    echo "  copilot: ${PROJECT}/.github/prompts/${name}.prompt.md"
   fi
 }
 
-main "$@"
+if [[ $# -ge 1 ]]; then
+  link_one "$1"
+else
+  for d in "${REPO_ROOT}"/skills/*/; do
+    [[ -f "${d}SKILL.md" ]] && link_one "$(basename "$d")"
+  done
+fi

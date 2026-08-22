@@ -3,6 +3,7 @@ name: mw-create-skill
 description: Scaffold a new cross-tool AI skill (Claude Code, Cursor, Copilot) into the ai-skills repo, then install and push it.
 argument-hint: <skill-name> [what the skill should do]
 allowed-tools: Bash, Read, Write, Edit
+mode: agent
 ---
 
 # mw-create-skill
@@ -36,23 +37,23 @@ Run everything below from the repo root.
    what the skill produces, when it should trigger, and any commands/tools it must
    run. Keep it tight — infer sensible defaults rather than interrogating.
 
-3. **Write the canonical source** to `skills/<name>/SKILL.md` with YAML
-   frontmatter (`name`, `description`, optional `argument-hint`, optional
-   `allowed-tools`) followed by a clear, imperative instruction body. Write the
-   body as instructions addressed to the assistant that will run the skill — set
-   out its steps, its inputs (`$ARGUMENTS`), and its guardrails. Match the style
-   of this file.
+3. **Write the canonical source** to `skills/<name>/SKILL.md` — this single file
+   is what every tool links to, so there is only ever one copy to edit. Give it
+   YAML frontmatter that all three tools tolerate: `name`, `description`, optional
+   `argument-hint` and `allowed-tools` (used by Claude), and `mode: agent` (used
+   by Copilot; the others ignore keys they don't recognize). Follow with a clear,
+   imperative instruction body addressed to the assistant that will run the skill
+   — its steps, its inputs (`$ARGUMENTS`), and its guardrails. Match this file.
 
-4. **Materialize the tool files** by running the repo's installer:
+4. **Install it** with the repo's installer, which only creates symlinks — no
+   copies are generated, so editing `SKILL.md` updates every tool at once:
 
    ```bash
-   ./install.sh <name>
+   ./install.sh <name>              # link the Claude command globally
+   ./install.sh --project . <name>  # also link Cursor + Copilot into a project
    ```
 
-   This regenerates the Claude command, the Cursor command, and the Copilot
-   prompt file for that skill under `skills/<name>/dist/`, and symlinks the
-   Claude one into `~/.claude/commands/` so it is usable immediately. Report any
-   installer error to the user instead of continuing.
+   Report any installer error to the user instead of continuing.
 
 5. **Register it** in the repo `README.md` skills table (name + description) if
    it is not already listed.
