@@ -11,6 +11,7 @@ sense inside one project are checked into that project's own repo instead.
 |-------|--------|-------------|
 | `mw-create-skill` | `/mw-create-skill` | Scaffold a new cross-tool skill into this repo and push it. |
 | `mw-simplicity-first` | `/mw-simplicity-first` | Prefer the simplest solution first; ask when unsure; offer simple alternatives as plain-language design options. |
+| `mw-update-doc-simplicity` | `/mw-update-doc-simplicity` | Rewrite docs (given scope, or the current branch's changed docs) to be simple, jargon-free, concise, and easy to follow. |
 
 ## Global, with no per-skill install (Claude Code)
 
